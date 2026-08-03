@@ -99,6 +99,12 @@ describe("server adapter registry", () => {
     );
   });
 
+  it("fails closed when runtime lookup receives an unknown adapter type", () => {
+    expect(() => getServerAdapter("jcode")).toThrow(
+      "Unknown adapter type: jcode",
+    );
+  });
+
   it("allows external plugin to override a built-in adapter type", () => {
     // claude_local is always built-in
     const builtIn = findServerAdapter("claude_local");

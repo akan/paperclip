@@ -21,6 +21,19 @@ async function migrationHash() {
   return createHash("sha256").update(content).digest("hex");
 }
 
+describe("JCode adapter type migration definition", () => {
+  it("only rewrites the legacy jcode adapter type", async () => {
+    const content = await fs.promises.readFile(
+      new URL(`./migrations/${MIGRATION_FILE}`, import.meta.url),
+      "utf8",
+    );
+
+    expect(content).toContain(`SET\n  "adapter_type" = 'jcode_local'`);
+    expect(content).toContain(`"error_reason" = 'Process adapter missing command'`);
+    expect(content).toContain(`WHERE "adapter_type" = 'jcode'`);
+  });
+});
+
 describeEmbeddedPostgres("JCode adapter type migration", () => {
   afterEach(async () => {
     await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
@@ -36,36 +49,63 @@ describeEmbeddedPostgres("JCode adapter type migration", () => {
 
     const companyId = randomUUID();
     const legacyAgentId = randomUUID();
+    const unrelatedErrorAgentId = randomUUID();
     const processAgentId = randomUUID();
     await sql`
       INSERT INTO "companies" ("id", "name", "issue_prefix")
       VALUES (${companyId}, 'Paperclip', 'PAP')
     `;
     await sql`
-      INSERT INTO "agents" ("id", "company_id", "name", "adapter_type", "adapter_config")
+      INSERT INTO "agents" (
+        "id",
+        "company_id",
+        "name",
+        "status",
+        "adapter_type",
+        "adapter_config",
+        "error_reason"
+      )
       VALUES
-        (${legacyAgentId}, ${companyId}, 'Legacy JCode', 'jcode', '{"model":"test-model"}'::jsonb),
-        (${processAgentId}, ${companyId}, 'Process', 'process', '{"command":"true"}'::jsonb)
+        (${legacyAgentId}, ${companyId}, 'Legacy JCode', 'error', 'jcode', '{"model":"test-model"}'::jsonb, 'Process adapter missing command'),
+        (${unrelatedErrorAgentId}, ${companyId}, 'Other JCode Error', 'error', 'jcode', '{}'::jsonb, 'Provider authentication failed'),
+        (${processAgentId}, ${companyId}, 'Process', 'idle', 'process', '{"command":"true"}'::jsonb, NULL)
     `;
 
     await applyPendingMigrations(database.connectionString);
 
-    const rows = await sql<{ id: string; adapter_type: string; adapter_config: Record<string, unknown> }[]>`
-      SELECT "id", "adapter_type", "adapter_config"
+    const rows = await sql<{
+      id: string;
+      status: string;
+      adapter_type: string;
+      adapter_config: Record<string, unknown>;
+      error_reason: string | null;
+    }[]>`
+      SELECT "id", "status", "adapter_type", "adapter_config", "error_reason"
       FROM "agents"
-      WHERE "id" IN (${legacyAgentId}, ${processAgentId})
+      WHERE "id" IN (${legacyAgentId}, ${unrelatedErrorAgentId}, ${processAgentId})
       ORDER BY "name"
     `;
     expect(rows).toEqual([
       {
         id: legacyAgentId,
+        status: "idle",
         adapter_type: "jcode_local",
         adapter_config: { model: "test-model" },
+        error_reason: null,
+      },
+      {
+        id: unrelatedErrorAgentId,
+        status: "error",
+        adapter_type: "jcode_local",
+        adapter_config: {},
+        error_reason: "Provider authentication failed",
       },
       {
         id: processAgentId,
+        status: "idle",
         adapter_type: "process",
         adapter_config: { command: "true" },
+        error_reason: null,
       },
     ]);
   }, 30_000);
