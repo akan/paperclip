@@ -1025,7 +1025,7 @@ export function requireServerAdapter(type: string): ServerAdapterModule {
 }
 
 export function getServerAdapter(type: string): ServerAdapterModule {
-  return findActiveServerAdapter(type) ?? processAdapter;
+  return requireServerAdapter(type);
 }
 
 /**
