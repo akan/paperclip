@@ -6,8 +6,8 @@ import {
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Check, Play, RefreshCw, RotateCcw, Terminal, Trash2, X } from "lucide-react";
-import { FitAddon } from "@xterm/addon-fit";
-import { Terminal as XTermTerminal } from "@xterm/xterm";
+import type { FitAddon } from "@xterm/addon-fit";
+import type { Terminal as XTermTerminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import {
   type EnvBinding,
@@ -484,69 +484,85 @@ function EnvironmentCustomImageBrowserTerminal({
     const element = terminalElementRef.current;
     if (!element || xtermRef.current) return undefined;
 
-    const terminal = new XTermTerminal({
-      allowTransparency: true,
-      cols: CUSTOM_IMAGE_TERMINAL_COLS,
-      rows: CUSTOM_IMAGE_TERMINAL_ROWS,
-      convertEol: false,
-      cursorBlink: true,
-      cursorInactiveStyle: "bar",
-      cursorStyle: "bar",
-      cursorWidth: 2,
-      customGlyphs: true,
-      fontFamily: CUSTOM_IMAGE_TERMINAL_FONT_FAMILY,
-      fontSize: 12,
-      letterSpacing: 0,
-      lineHeight: 1.35,
-      scrollback: CUSTOM_IMAGE_TERMINAL_SCROLLBACK_ROWS,
-      theme: {
-        // token-extraction: allowlisted — xterm.js terminal theme config; functional third-party option object, not a rendered CSS value.
-        background: "#0a0a0a",
-        foreground: "#f5f5f5",
-        cursor: "#22d3ee",
-        cursorAccent: "#020617",
-        selectionBackground: "#2563eb55",
-      },
-    });
-    const fitAddon = new FitAddon();
-    terminal.loadAddon(fitAddon);
-    terminal.open(element);
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
 
-    xtermRef.current = terminal;
-    fitAddonRef.current = fitAddon;
-    terminalInputDisposableRef.current = terminal.onData(sendTerminalInput);
+    void (async () => {
+      const [{ Terminal: TerminalCtor }, { FitAddon: FitAddonCtor }] = await Promise.all([
+        import("@xterm/xterm"),
+        import("@xterm/addon-fit"),
+      ]);
+      if (cancelled || !element) return;
 
-    if (typeof ResizeObserver !== "undefined") {
-      const resizeObserver = new ResizeObserver(() => requestFitTerminal());
-      resizeObserver.observe(element);
-      resizeObserverRef.current = resizeObserver;
-    }
+      const terminal = new TerminalCtor({
+        allowTransparency: true,
+        cols: CUSTOM_IMAGE_TERMINAL_COLS,
+        rows: CUSTOM_IMAGE_TERMINAL_ROWS,
+        convertEol: false,
+        cursorBlink: true,
+        cursorInactiveStyle: "bar",
+        cursorStyle: "bar",
+        cursorWidth: 2,
+        customGlyphs: true,
+        fontFamily: CUSTOM_IMAGE_TERMINAL_FONT_FAMILY,
+        fontSize: 12,
+        letterSpacing: 0,
+        lineHeight: 1.35,
+        scrollback: CUSTOM_IMAGE_TERMINAL_SCROLLBACK_ROWS,
+        theme: {
+          // token-extraction: allowlisted — xterm.js terminal theme config; functional third-party option object, not a rendered CSS value.
+          background: "#0a0a0a",
+          foreground: "#f5f5f5",
+          cursor: "#22d3ee",
+          cursorAccent: "#020617",
+          selectionBackground: "#2563eb55",
+        },
+      });
+      const fitAddon = new FitAddonCtor();
+      terminal.loadAddon(fitAddon);
+      terminal.open(element);
 
-    terminal.focus();
-    requestFitTerminal();
-    const fitTimeouts = [50, 250].map((delay) => window.setTimeout(fitTerminal, delay));
-    const fontsReady = "fonts" in document
-      ? (document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts?.ready
-      : null;
-    if (fontsReady) {
-      void fontsReady.then(() => fitTerminal());
-    }
+      xtermRef.current = terminal;
+      fitAddonRef.current = fitAddon;
+      terminalInputDisposableRef.current = terminal.onData(sendTerminalInput);
+
+      if (typeof ResizeObserver !== "undefined") {
+        const resizeObserver = new ResizeObserver(() => requestFitTerminal());
+        resizeObserver.observe(element);
+        resizeObserverRef.current = resizeObserver;
+      }
+
+      terminal.focus();
+      requestFitTerminal();
+      const fitTimeouts = [50, 250].map((delay) => window.setTimeout(fitTerminal, delay));
+      const fontsReady = "fonts" in document
+        ? (document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts?.ready
+        : null;
+      if (fontsReady) {
+        void fontsReady.then(() => fitTerminal());
+      }
+
+      cleanup = () => {
+        if (fitFrameRef.current !== null) {
+          window.cancelAnimationFrame(fitFrameRef.current);
+          fitFrameRef.current = null;
+        }
+        for (const timeoutId of fitTimeouts) {
+          window.clearTimeout(timeoutId);
+        }
+        resizeObserverRef.current?.disconnect();
+        resizeObserverRef.current = null;
+        terminalInputDisposableRef.current?.dispose();
+        terminalInputDisposableRef.current = null;
+        fitAddonRef.current = null;
+        xtermRef.current = null;
+        terminal.dispose();
+      };
+    })();
 
     return () => {
-      if (fitFrameRef.current !== null) {
-        window.cancelAnimationFrame(fitFrameRef.current);
-        fitFrameRef.current = null;
-      }
-      for (const timeoutId of fitTimeouts) {
-        window.clearTimeout(timeoutId);
-      }
-      resizeObserverRef.current?.disconnect();
-      resizeObserverRef.current = null;
-      terminalInputDisposableRef.current?.dispose();
-      terminalInputDisposableRef.current = null;
-      fitAddonRef.current = null;
-      xtermRef.current = null;
-      terminal.dispose();
+      cancelled = true;
+      cleanup?.();
     };
   }, [fitTerminal, requestFitTerminal, sendTerminalInput]);
 
