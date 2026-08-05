@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, lazy, Suspense, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Outlet, useLocation, useNavigate, useNavigationType, useParams } from "@/lib/router";
 import { Sidebar } from "./Sidebar";
@@ -12,10 +12,6 @@ import { SkillsContextualSidebar } from "./SkillsContextualSidebar";
 import { BreadcrumbBar } from "./BreadcrumbBar";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { CommandPalette } from "./CommandPalette";
-import { NewIssueDialog } from "./NewIssueDialog";
-import { NewProjectDialog } from "./NewProjectDialog";
-import { NewGoalDialog } from "./NewGoalDialog";
-import { NewAgentDialog } from "./NewAgentDialog";
 import { KeyboardShortcutsCheatsheet } from "./KeyboardShortcutsCheatsheet";
 import { ToastViewport } from "./ToastViewport";
 import { MobileBottomNav } from "./MobileBottomNav";
@@ -57,6 +53,11 @@ import {
 import { cn } from "../lib/utils";
 import { NotFoundPage } from "../pages/NotFound";
 import { PluginSlotMount, resolveRouteSidebarSlot, usePluginSlots } from "../plugins/slots";
+
+const NewIssueDialogLazy = lazy(() => import("./NewIssueDialog").then((m) => ({ default: m.NewIssueDialog })));
+const NewProjectDialogLazy = lazy(() => import("./NewProjectDialog").then((m) => ({ default: m.NewProjectDialog })));
+const NewGoalDialogLazy = lazy(() => import("./NewGoalDialog").then((m) => ({ default: m.NewGoalDialog })));
+const NewAgentDialogLazy = lazy(() => import("./NewAgentDialog").then((m) => ({ default: m.NewAgentDialog })));
 
 function getCompanyRouteSegment(pathname: string, companyPrefix: string | undefined): string | null {
   return getCompanyPathSegments(pathname, companyPrefix)[0]?.toLowerCase() ?? null;
@@ -777,10 +778,12 @@ export function Layout({ sidebarSections }: { sidebarSections?: ReactNode }) {
       </div>
       {isMobile && <MobileBottomNav visible={mobileNavVisible} />}
       <CommandPalette />
-      <NewIssueDialog />
-      <NewProjectDialog />
-      <NewGoalDialog />
-      <NewAgentDialog />
+      <Suspense fallback={null}>
+        <NewIssueDialogLazy />
+        <NewProjectDialogLazy />
+        <NewGoalDialogLazy />
+        <NewAgentDialogLazy />
+      </Suspense>
       <KeyboardShortcutsCheatsheet open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <ToastViewport />
       </div>
