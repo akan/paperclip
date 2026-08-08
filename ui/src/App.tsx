@@ -153,8 +153,7 @@ function ProductionSurface({ children }: { children: ReactNode }) {
 
 function boardRoutes(streamlinedUiEnabled: boolean) {
   return (
-    <Suspense fallback={null}>
-      <>
+    <>
       <Route index element={<Navigate to="dashboard" replace />} />
       <Route path="dashboard" element={<Dashboard />} />
       <Route path="dashboard/live" element={<DashboardLive />} />
@@ -440,8 +439,7 @@ function boardRoutes(streamlinedUiEnabled: boolean) {
       <Route path="instance/settings/adapters" element={<AdapterManager />} />
       <Route path=":pluginRoutePath/*" element={<PluginPage />} />
       <Route path="*" element={<NotFoundPage scope="board" />} />
-      </>
-    </Suspense>
+    </>
   );
 }
 
@@ -753,6 +751,7 @@ export function App() {
 
   return (
     <>
+      <Suspense fallback={null}>
       <Routes>
         <Route path="oauth-handoff" element={<PaperclipCloudOAuthHandoffPage />} />
         <Route path="auth" element={<AuthPage />} />
@@ -845,6 +844,7 @@ export function App() {
           <Route path="*" element={<NotFoundPage scope="global" />} />
         </Route>
       </Routes>
+      </Suspense>
       <OnboardingWizardVariant />
     </>
   );
