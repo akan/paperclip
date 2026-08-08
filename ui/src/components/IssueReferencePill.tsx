@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
 import type { IssueRelationIssueSummary } from "@paperclipai/shared";
-import { Link } from "@/lib/router";
+import { InsideLinkContext, Link, useNavigate } from "@/lib/router";
 import { cn } from "../lib/utils";
 import { StatusIcon } from "./StatusIcon";
 
@@ -17,6 +17,8 @@ export function IssueReferencePill({
   children?: ReactNode;
 }) {
   const issueLabel = issue.identifier ?? issue.title;
+  const insideLink = useContext(InsideLinkContext);
+  const navigate = useNavigate();
   const classNames = cn(
     "paperclip-mention-chip paperclip-mention-chip--issue",
     "inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs no-underline",
@@ -38,6 +40,36 @@ export function IssueReferencePill({
         className={classNames}
         title={issue.title}
         aria-label={`Task: ${issue.title}`}
+      >
+        {content}
+      </span>
+    );
+  }
+
+  // When rendered inside another <Link>, HTML disallows nesting <a>; downgrade
+  // to a <span> with manual navigation. Loses the quicklook popover, but
+  // avoids React 19 hydration errors.
+  if (insideLink) {
+    return (
+      <span
+        data-mention-kind="issue"
+        className={classNames}
+        title={issue.title}
+        aria-label={`Task ${issueLabel}: ${issue.title}`}
+        role="link"
+        tabIndex={0}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          navigate(`/issues/${issueLabel}`);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+            navigate(`/issues/${issueLabel}`);
+          }
+        }}
       >
         {content}
       </span>
