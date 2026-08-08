@@ -107,9 +107,8 @@ import { normalizeRememberedInstanceSettingsPath } from "./lib/instance-settings
 
 function boardRoutes() {
   return (
-    <Suspense fallback={null}>
-      <>
-        <Route index element={<Navigate to="dashboard" replace />} />
+    <>
+      <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
       <Route path="dashboard/live" element={<DashboardLive />} />
       <Route path="timeline" element={<Timeline />} />
@@ -295,8 +294,7 @@ function boardRoutes() {
       <Route path="instance/settings/adapters" element={<AdapterManager />} />
       <Route path=":pluginRoutePath/*" element={<PluginPage />} />
       <Route path="*" element={<NotFoundPage scope="board" />} />
-      </>
-    </Suspense>
+    </>
   );
 }
 
@@ -532,6 +530,7 @@ function NoCompaniesStartPage() {
 export function App() {
   return (
     <>
+      <Suspense fallback={null}>
       <Routes>
         <Route path="auth" element={<AuthPage />} />
         <Route path="board-claim/:token" element={<BoardClaimPage />} />
@@ -606,6 +605,7 @@ export function App() {
           <Route path="*" element={<NotFoundPage scope="global" />} />
         </Route>
       </Routes>
+      </Suspense>
       <OnboardingWizardVariant />
     </>
   );
