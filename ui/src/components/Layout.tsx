@@ -19,7 +19,7 @@ import { RouteErrorBoundary } from "./RouteErrorBoundary";
 import { SidebarShell } from "./SidebarShell";
 import { SecondarySidebar } from "./SecondarySidebar";
 import { SidebarAccountMenu } from "./SidebarAccountMenu";
-import { useDialogActions } from "../context/DialogContext";
+import { useDialogActions, useDialogState } from "../context/DialogContext";
 import { GeneralSettingsProvider } from "../context/GeneralSettingsContext";
 import { usePanel } from "../context/PanelContext";
 import { useCompany } from "../context/CompanyContext";
@@ -85,6 +85,7 @@ export function Layout() {
     setForceCollapsed,
   } = useSidebar();
   const { openNewIssue, openOnboarding } = useDialogActions();
+  const { newIssueOpen, newProjectOpen, newGoalOpen, newAgentOpen } = useDialogState();
   const { togglePanelVisible } = usePanel();
   const {
     companies,
@@ -654,10 +655,10 @@ export function Layout() {
       {isMobile && <MobileBottomNav visible={mobileNavVisible} />}
       <CommandPalette />
       <Suspense fallback={null}>
-        <NewIssueDialogLazy />
-        <NewProjectDialogLazy />
-        <NewGoalDialogLazy />
-        <NewAgentDialogLazy />
+        {newIssueOpen ? <NewIssueDialogLazy /> : null}
+        {newProjectOpen ? <NewProjectDialogLazy /> : null}
+        {newGoalOpen ? <NewGoalDialogLazy /> : null}
+        {newAgentOpen ? <NewAgentDialogLazy /> : null}
       </Suspense>
       <KeyboardShortcutsCheatsheet open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <ToastViewport />
