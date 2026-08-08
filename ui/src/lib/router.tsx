@@ -12,6 +12,14 @@ import {
 } from "@/lib/company-routes";
 import { parseIssuePathIdFromPath } from "@/lib/issue-reference";
 
+/**
+ * Set true while rendering inside a `<Link>` so nested interactive widgets
+ * (e.g. mention chips, issue reference pills) can downgrade themselves to
+ * `<span onClick>` instead of nesting another `<a>`. HTML disallows `<a>` inside
+ * `<a>` and React 19 hydration will throw.
+ */
+export const InsideLinkContext = React.createContext(false);
+
 function resolveTo(to: To, companyPrefix: string | null): To {
   if (typeof to === "string") {
     return applyCompanyPrefix(to, companyPrefix);
@@ -76,23 +84,30 @@ export const Link = React.forwardRef<HTMLAnchorElement, CompanyLinkProps>(
     const companyPrefix = useActiveCompanyPrefix();
     const resolvedTo = resolveTo(to, companyPrefix);
     const issuePathId = parseIssuePathIdFromPath(typeof resolvedTo === "string" ? resolvedTo : resolvedTo.pathname);
+    const insideLink = React.useContext(InsideLinkContext);
 
     if (issuePathId) {
       return (
-        <IssueLinkQuicklook
-          ref={ref}
-          to={resolvedTo}
-          issuePathId={issuePathId}
-          disableIssueQuicklook={disableIssueQuicklook}
-          issuePrefetch={issuePrefetch}
-          issueQuicklookSide={issueQuicklookSide}
-          issueQuicklookAlign={issueQuicklookAlign}
-          {...props}
-        />
+        <InsideLinkContext.Provider value={true}>
+          <IssueLinkQuicklook
+            ref={ref}
+            to={resolvedTo}
+            issuePathId={issuePathId}
+            disableIssueQuicklook={disableIssueQuicklook}
+            issuePrefetch={issuePrefetch}
+            issueQuicklookSide={issueQuicklookSide}
+            issueQuicklookAlign={issueQuicklookAlign}
+            {...props}
+          />
+        </InsideLinkContext.Provider>
       );
     }
 
-    return <RouterDom.Link ref={ref} to={resolvedTo} {...props} />;
+    return (
+      <InsideLinkContext.Provider value={true}>
+        <RouterDom.Link ref={ref} to={resolvedTo} {...props} />
+      </InsideLinkContext.Provider>
+    );
   },
 );
 

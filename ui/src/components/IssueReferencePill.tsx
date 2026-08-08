@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
 import type { IssueRelationIssueSummary } from "@paperclipai/shared";
-import { Link } from "@/lib/router";
+import { InsideLinkContext, Link, useNavigate } from "@/lib/router";
 import { cn } from "../lib/utils";
 import { badgeVariants } from "./ui/badge";
 import { StatusIcon } from "./StatusIcon";
@@ -24,6 +24,8 @@ export function IssueReferencePill({
   onRemove?: (issueId: string) => void;
 }) {
   const issueLabel = issue.identifier ?? issue.title;
+  const insideLink = useContext(InsideLinkContext);
+  const navigate = useNavigate();
   const classNames = cn(
     variant === "property" || onRemove
       ? cn(badgeVariants({ variant: "outline" }), "min-w-0 max-w-full shrink font-normal no-underline")
@@ -76,6 +78,36 @@ export function IssueReferencePill({
         className={classNames}
         title={issue.title}
         aria-label={`Task: ${issue.title}`}
+      >
+        {content}
+      </span>
+    );
+  }
+
+  // When rendered inside another <Link>, HTML disallows nesting <a>; downgrade
+  // to a <span> with manual navigation. Loses the quicklook popover, but
+  // avoids React 19 hydration errors.
+  if (insideLink) {
+    return (
+      <span
+        data-mention-kind="issue"
+        className={classNames}
+        title={issue.title}
+        aria-label={`Task ${issueLabel}: ${issue.title}`}
+        role="link"
+        tabIndex={0}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          navigate(`/issues/${issueLabel}`);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+            navigate(`/issues/${issueLabel}`);
+          }
+        }}
       >
         {content}
       </span>
