@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode, type Ref } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode, type Ref } from "react";
 import { pickTextColorForPillBg } from "@/lib/color-contrast";
 import { Link, useLocation, useNavigate, useNavigationType, useParams } from "@/lib/router";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient, type InfiniteData, type QueryClient } from "@tanstack/react-query";
@@ -84,10 +84,12 @@ import { liveBlueBadge } from "../lib/status-colors";
 import { ApprovalCard } from "../components/ApprovalCard";
 import { InlineEditor } from "../components/InlineEditor";
 import {
-  IssueChatThread,
   type IssueChatComposerHandle,
   type IssueChatRunFinalizationAction,
 } from "../components/IssueChatThread";
+const IssueChatThreadLazy = lazy(() =>
+  import("../components/IssueChatThread").then((m) => ({ default: m.IssueChatThread })),
+);
 import { workModeMetaFor } from "../lib/work-mode-meta";
 import { IssueContinuationHandoff } from "../components/IssueContinuationHandoff";
 import { IssueAttachmentsSection } from "../components/IssueAttachmentsSection";
@@ -1021,7 +1023,7 @@ const IssueDetailChatTab = memo(function IssueDetailChatTab({
   externalReferences,
   linkCaseReferences,
 }: IssueDetailChatTabProps) {
-  const ThreadComponent = IssueChatThread;
+  const ThreadComponent = IssueChatThreadLazy;
   const { data: activity } = useQuery({
     queryKey: queryKeys.issues.activity(issueId),
     queryFn: () => activityApi.forIssue(issueId),
@@ -1172,6 +1174,7 @@ const IssueDetailChatTab = memo(function IssueDetailChatTab({
           </Button>
         </div>
       ) : null}
+      <Suspense fallback={null}>
       <ThreadComponent
         composerRef={composerRef}
         composerAccessory={composerAccessory}
@@ -1254,6 +1257,7 @@ const IssueDetailChatTab = memo(function IssueDetailChatTab({
         externalReferences={externalReferences}
         linkCaseReferences={linkCaseReferences}
       />
+      </Suspense>
     </div>
   );
 });
